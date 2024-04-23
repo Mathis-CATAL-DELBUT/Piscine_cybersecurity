@@ -1,40 +1,32 @@
 import requests
-from bs4 import BeautifulSoup
 import os
+from bs4 import BeautifulSoup
+from colorama import Fore
 
-url = 'https://fr.wikipedia.org/wiki/M%C3%A9thode_des_moindres_carr%C3%A9s'
-extensions = [".jpg", ".jpeg", ".png", ".gif", ".bmp"]
+url = "https://www.apple.com/"
+extension = [".jpg", ".jpeg", ".png", ".gif", ".bnp"]
 
-response = requests.get(url)
+content = requests.get(url)
 
-all_html = BeautifulSoup(response.text, 'html.parser')
+parser = BeautifulSoup(content.text, "html.parser")
 
-all_img = all_html.find_all("img")
+imgs = parser.find_all("img")
 
-srcs_img = []
+srcs = []
 
-for img in all_img:
+for img in imgs:
     src = img.get("src")
-    if (any(src.endswith(ext) for ext in extensions)):
-        if (src.startswith("//")):
-            src = "https:" + src
-        else:
-            src = "https://" + url.split("/")[2] + src
-        srcs_img.append(src)
-        print(src)
+    if(src.startswith("//")):
+        src = "https:" + src
+    elif src.startswith("/"):
+        src = "https://" + url.split("/")[2] + src
+    if (any(src.endswith(ext) for ext in extension)):
+        srcs.append(src)
 
-
-folder_path = "../photo"
-
-
-for src in srcs_img:
-    filename = src.split("/")[-1]
-    response = requests.get(src)
-    file_path = os.path.join(folder_path, filename)
-    if response.status_code == 200:
-        with open(file_path, 'wb') as f:
-            f.write(response.content)
-        print(f"Image '{filename}' téléchargée avec succès.")
-    else:
-        print(f"Échec du téléchargement de l'image '{filename}'. Code d'état : {response.status_code}")
-
+for src in srcs:
+    image = requests.get(src)
+    file_name = src.split("/")[-1]
+    path = os.path.join("../photo/" + file_name)
+    with open(path, "wb") as img_folder:
+        img_folder.write(image.content)
+        print("image", Fore.GREEN, src.split("/")[-1], Fore.RESET, "successfully downloaded")
