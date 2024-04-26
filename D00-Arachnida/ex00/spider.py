@@ -1,6 +1,5 @@
 import requests
 import os
-import argparse
 import sys
 import random
 import string
@@ -24,7 +23,7 @@ def parse_args():
     if ("-l" in sys.argv):
         level_index = sys.argv.index("-l")
         try:
-            level = int(sys.argv[level_index + 1])
+            level = int(sys.argv[level_index + 1]) 
         except:
             print("Invalid level")
             exit(1)
@@ -44,7 +43,7 @@ def parse_args():
     
 def spider(file_path, url, recursive, level, visited_links = []):
     if (url not in visited_links and level >= 0):
-        print("Downloading images from", Fore.BLUE, url, Fore.RESET)
+        print("Downloading images from", Fore.MAGENTA if level > 0 else Fore.BLUE, url, Fore.RESET)
     
     visited_links.append(url)
 
@@ -56,7 +55,7 @@ def spider(file_path, url, recursive, level, visited_links = []):
         print("Invalid URL")
         return
 
-    print("level = ", level)
+    # print("level = ", level)
 
 
     parser = BeautifulSoup(content.text, "html.parser")
@@ -76,7 +75,7 @@ def spider(file_path, url, recursive, level, visited_links = []):
         elif src.startswith("http"):
             src = src
         elif src.startswith(".."):
-            src = url + src[2:]
+            src = "http://" + url.split("/")[2] + src[2:]
         else:
             src = "https://" + url.split("/")[2] + "/" + src
         if (any(src.endswith(ext) for ext in extension)):
@@ -90,15 +89,27 @@ def spider(file_path, url, recursive, level, visited_links = []):
             path = os.path.join(file_path + file_name[:255-len(file_name)])
         if (os.path.exists(path)):
             path = file_path + ''.join(random.choices(string.ascii_letters, k=5)) + file_name
-        with open(path, "wb") as img_folder:
-            img_folder.write(image.content)
-            print("image", Fore.GREEN, src.split("/")[-1], Fore.RESET, "successfully downloaded")
+        if image.status_code == 200: 
+            with open(path, "wb") as img_folder:
+                img_folder.write(image.content)
+                # print("image", Fore.GREEN, src.split("/")[-1], Fore.RESET, "successfully downloaded")
 
     if recursive and level > 0:
         links = parser.find_all("a")
+        print("=====================================")
+        print("Found ", len(links), "links")
+        print("Found ", len(srcs), "images")
+        print("level = ", level)
+        print("=====================================")
         for link in links:
-            if link.get("href") and link.get("href").startswith("http") and link.get("href") not in visited_links:
+            if link.get("href") and not link.get("href").startswith("http"):
+                link["href"] = "https://" + url.split("/")[2] + link.get("href")
+            if link.get("href") not in visited_links:
                 spider(file_path, link.get("href"), recursive, level - 1, visited_links)
+    else:
+        print("-----------------------")
+        print("Found ", len(srcs), "images")
+        print("-----------------------")
 
 def main():
     path, recursive, level, file_path = parse_args()
