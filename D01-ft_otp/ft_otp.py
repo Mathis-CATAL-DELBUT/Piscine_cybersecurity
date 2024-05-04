@@ -3,11 +3,10 @@ import hashlib
 import time
 
 import hmac
-import hashlib
+import binascii
 
 def generate_totp(key, time, nb_char):
-    k = bytes.fromhex(key)
-    hash = hmac.new(k, time, hashlib.sha1).digest()
+    hash = hmac.new(key, time, hashlib.sha1).digest()
     offset = hash[-1] & 0xf # 0xf = 00001111
     # 0x7f = 01111111
     # 0xff = 11111111
@@ -30,17 +29,17 @@ def main():
         with open("ft_otp.key", "w") as key:
             with open(args.g, "r") as file:
                 k = file.read().split(" ")[0].split("\n")[0]
-                print(k)
                 if (len(k) < 64):
                     return print("File must be at least 64 characters long.")
                 key.write(k)
                 print("Key was successfully saved in ft_otp.key.")
 
     if (args.k):
-        with open("ft_otp.key", "r") as key:
+        with open("ft_otp.key", "r") as key_file:
             t = int(time.time() // 30)
             t_binary = t.to_bytes(8, byteorder='big')
-            k = key.read()
-            print(generate_totp(k, t_binary, 6))
+            k = key_file.read().strip()  # Lecture de la clé depuis le fichier
+            k_bytes = bytes.fromhex(k)
+            print(generate_totp(k_bytes, t_binary, 6))
 
 main()
