@@ -3,6 +3,9 @@ import hashlib
 import time
 import hmac
 from cryptography.fernet import Fernet
+import pyotp
+import qrcode
+import base64
 
 def generate_totp(key, time, nb_char):
     hash = hmac.new(key, time, hashlib.sha1).digest()
@@ -19,6 +22,18 @@ def generate_totp(key, time, nb_char):
         result = "0" + result
     return result
 
+def generate_qr_code(key):
+    binary_key = bytes.fromhex(key)
+    key_32 = base64.b32encode(binary_key).decode()
+    otp_url = pyotp.totp.TOTP(key_32).provisioning_uri("TOTP", issuer_name="Mcatal-d")
+
+    # Generer le QR code
+    qr = qrcode.QRCode()
+    qr.add_data(otp_url)
+    img = qr.make_image()
+    img.save("qrcode.png")
+    
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-g", help="Generate OTP")
@@ -27,22 +42,30 @@ def main():
 
     args = parser.parse_args()
     if (args.g):
-        with open("ft_otp.key", "w") as ft_otp:
-            with open(args.g, "r") as file_param:
-                key = file_param.read().split(" ")[0].split("\n")[0]
-                if (len(key) < 64):
-                    return print("./ft_otp: error: key must be 64 hexadecimal characters.")
-                encode_key = fernet.encrypt(key.encode())
-                ft_otp.write(encode_key.decode())
-                print("Key was successfully saved in ft_otp.key.")
+        try:
+            with open("ft_otp.key", "w") as ft_otp:
+                with open(args.g, "r") as file_param:
+                    key = file_param.read().split(" ")[0].split("\n")[0]
+                    if (len(key) < 64):
+                        return print("./ft_otp: error: key must be 64 hexadecimal characters.")
+                    encode_key = fernet.encrypt(key.encode())
+                    ft_otp.write(encode_key.decode())
+                    print("Key was successfully saved in ft_otp.key.")
+        except:
+            print("./ft_otp: error: wrong file.")
 
     if (args.k):
-        with open("ft_otp.key", "r") as key_file:
-            t = int(time.time() // 30)
-            time_binary = t.to_bytes(8, byteorder='big')
-            key = key_file.read().strip()
-            key = fernet.decrypt(key.encode()).decode()
-            k_bytes = bytes.fromhex(key)
-            print(generate_totp(k_bytes, time_binary, 6))
+        try :
+            with open(args.k, "r") as key_file:
+                t = int(time.time() // 30)
+                time_binary = t.to_bytes(8, byteorder='big')
+                key = key_file.read().strip()
+                key = fernet.decrypt(key.encode()).decode()
+                generate_qr_code(key)
+                k_bytes = bytes.fromhex(key)
+                totp = generate_totp(k_bytes, time_binary, 6)
+                print(totp)
+        except:
+            print("./ft_otp: error: key file not found.")
 
 main()
