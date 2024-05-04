@@ -7,9 +7,25 @@ import pyotp
 import qrcode
 import base64
 import tkinter as tk
+from PIL import Image, ImageTk
 
-def generate_totp(key, time, nb_char):
-    hash = hmac.new(key, time, hashlib.sha1).digest()
+def generate_totp(args, fernet, nb_char, label):
+    '''
+    - Generate a TOTP code with HOTP algorithm (HMAC-SHA1 + TOTP) rfc 4226
+    https://datatracker.ietf.org/doc/html/rfc6238
+    '''
+    try :
+        with open(args.k, "r") as key_file:
+            t = int(time.time() // 30)
+            time_binary = t.to_bytes(8, byteorder='big')
+            key = key_file.read().strip()
+            key = fernet.decrypt(key.encode()).decode()
+            k_binary = bytes.fromhex(key)
+    except:
+        print("./ft_otp: error: key file not found.")
+
+
+    hash = hmac.new(k_binary, time_binary, hashlib.sha1).digest()
     offset = hash[-1] & 0xf # 0xf = 00001111
     # 0x7f = 01111111
     # 0xff = 11111111
@@ -21,11 +37,18 @@ def generate_totp(key, time, nb_char):
     result = str(binary % 10 ** nb_char)
     while len(result) < nb_char:
         result = "0" + result
-    # label.config(text=result)
-    print(result)
+    label.config(text=result)
     return result
 
-def generate_qr_code(key):
+def generate_qr_code(file_key, fernet, root):
+    '''
+    - Generate a QR code with the TOTP key
+    - Print the QR code on the screen
+    '''
+    with open(file_key, "r") as key_file:
+        key = key_file.read()
+        key = fernet.decrypt(key.encode()).decode()
+
     binary_key = bytes.fromhex(key)
     key_32 = base64.b32encode(binary_key).decode()
     otp_url = pyotp.totp.TOTP(key_32).provisioning_uri("TOTP", issuer_name="Mcatal-d")
@@ -36,6 +59,13 @@ def generate_qr_code(key):
     img = qr.make_image()
     img.save("qrcode.png")
     
+    # Afficher le QR code
+    image = Image.open("qrcode.png")
+    image = image.resize((200, 200))
+    image = ImageTk.PhotoImage(image)
+    qr_label = tk.Label(root, image=image, width=200, height=200)
+    qr_label.image = image
+    qr_label.place(relx=0.5, rely=0.6, anchor="center")
 
 def main():
     parser = argparse.ArgumentParser()
@@ -58,21 +88,20 @@ def main():
             print("./ft_otp: error: wrong file.")
 
     if (args.k):
-        try :
-            with open(args.k, "r") as key_file:
-                root = tk.Tk()
-                t = int(time.time() // 30)
-                time_binary = t.to_bytes(8, byteorder='big')
-                key = key_file.read().strip()
-                key = fernet.decrypt(key.encode()).decode()
-                generate_qr_code(key)
-                k_bytes = bytes.fromhex(key)
-                totp = generate_totp(k_bytes, time_binary, 6)
-                print(totp)
-                generate_button = tk.Button(root, text="Generate", command=lambda: generate_totp(k_bytes, time_binary, 6))
-                generate_button.place(x=100, y=100)
-                root.mainloop()
-        except:
-            print("./ft_otp: error: key file not found.")
+        root = tk.Tk()
+        root.title("TOTP")
+        root.geometry("500x500")
+
+        generate_button = tk.Button(root, text="Generate code", command=lambda: generate_totp(args, fernet, 6, code))
+        generate_button.place(relx=0.5, rely=0.1, anchor="center")
+
+        code = tk.Label(root, text="", bg="white", width=20, height=1)
+        code.place(relx=0.5, rely=0.2, anchor="center")
+
+        generate_button = tk.Button(root, text="Generate QR code", command=lambda: generate_qr_code(args.k, fernet, root))
+        generate_button.place(relx=0.5, rely=0.3, anchor="center")
+
+        root.mainloop()
+        
 
 main()
