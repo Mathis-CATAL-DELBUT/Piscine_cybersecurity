@@ -15,9 +15,9 @@ def generate_totp(key, time, nb_char):
              (hash[offset + 3] & 0xff)
 
     result = str(binary % 10 ** nb_char)
+    while len(result) < nb_char:
+        result = "0" + result
     return result
-
-# key = b'NcjPjA88VYJFSp7Ev73WfovDVx9UkzQq7xz0VH7levQ='
 
 def main():
     parser = argparse.ArgumentParser()
@@ -31,7 +31,7 @@ def main():
             with open(args.g, "r") as file_param:
                 key = file_param.read().split(" ")[0].split("\n")[0]
                 if (len(key) < 64):
-                    return print("File must be at least 64 characters long.")
+                    return print("./ft_otp: error: key must be 64 hexadecimal characters.")
                 encode_key = fernet.encrypt(key.encode())
                 ft_otp.write(encode_key.decode())
                 print("Key was successfully saved in ft_otp.key.")
