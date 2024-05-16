@@ -21,4 +21,5 @@ COPY ./nginx.conf /etc/nginx/sites-available/default
 COPY ./sshd_config /etc/ssh/sshd_config
 COPY ./torrc /etc/tor/torrc
 
-CMD service ssh start && nginx -g 'daemon off;' && service tor start && tail -f /dev/null
+CMD service ssh start && nginx -g 'daemon off;'& \
+    su debian-tor -s /bin/bash -c "tor"

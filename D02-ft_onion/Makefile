@@ -7,13 +7,11 @@ $(NAME):
 			docker run -d -p 4243:4242 --name onion_run onion_image
 
 ssh:
+			ssh-keygen -f "/mnt/nfs/homes/mcatal-d/.ssh/known_hosts" -R "[localhost]:4243"
 			ssh root@localhost -p 4243
 
 exec:
 			docker exec -it onion_run /bin/bash
-
-key:
-			ssh-keygen -f "/mnt/nfs/homes/mcatal-d/.ssh/known_hosts" -R "[localhost]:4243"
 
 fclean:
 			if [ $$(docker ps -aq) ]; then docker stop $$(docker ps -aq); fi
