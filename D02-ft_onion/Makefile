@@ -10,6 +10,10 @@ ssh:
 			ssh-keygen -f "/mnt/nfs/homes/mcatal-d/.ssh/known_hosts" -R "[localhost]:4243"
 			ssh root@localhost -p 4243
 
+ssh_with_key:
+			ssh-keygen -f "/mnt/nfs/homes/mcatal-d/.ssh/known_hosts" -R "[localhost]:4243"
+			ssh -i bonus/mathis_key -p 4243 mathis@localhost
+
 exec:
 			docker exec -it onion_run /bin/bash
 

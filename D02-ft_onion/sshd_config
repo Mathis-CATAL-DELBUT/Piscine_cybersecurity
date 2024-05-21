@@ -1,14 +1,5 @@
+#### Basic configuration for SSH server ####
 
 Port 4242
-
-UsePAM yes
-
 PermitRootLogin yes
 PasswordAuthentication yes
-
-
-PrintMotd no
-
-AcceptEnv LANG LC_*
-
-Subsystem       sftp    /usr/lib/openssh/sftp-server

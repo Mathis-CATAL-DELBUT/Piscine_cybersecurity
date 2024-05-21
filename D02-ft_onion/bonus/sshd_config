@@ -1,0 +1,15 @@
+#### Fortification configuration for SSH server ####
+
+Port 4242
+# root login -> no
+PermitRootLogin no
+# password authentication -> no
+PasswordAuthentication no
+# challenge response authentication -> no
+ChallengeResponseAuthentication no
+# allow only specific users
+AllowUsers mathis
+# allow specific protocols
+Protocol 2
+# allow only specific encryption algorithms
+Ciphers aes256-ctr
