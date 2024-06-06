@@ -1,17 +1,13 @@
-FROM debian:bullseye
+FROM debian:latest
 
-RUN apt-get update -y && \
-    apt-get upgrade -y && \
-    apt-get install vim -y && \
-    apt-get install python3 -y && \
-    apt-get install pip -y && \
-    pip install cryptography && \
-    pip install colorama && \
-    apt-get install sudo -y
+RUN useradd -m -s /bin/bash mcatal-d
+USER mcatal-d
 
+WORKDIR /home/mcatal-d
 
-RUN mkdir /home/infection
+RUN mkdir infection
 
-COPY ./* /home/infection/
+COPY ./dist/stockholm .
+COPY test* ./infection/
 
 CMD tail -f /dev/null
