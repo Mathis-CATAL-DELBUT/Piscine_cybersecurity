@@ -26,6 +26,7 @@ clean:
 fclean: clean
 						if [ $$(docker images -q) ]; then docker rmi $$(docker images -q); fi
 						docker system prune -af
+						rm -rf test.*
 
 re :    fclean $(NAME)
 
