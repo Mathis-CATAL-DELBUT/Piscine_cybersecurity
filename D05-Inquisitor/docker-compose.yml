@@ -1,0 +1,40 @@
+services:
+  ftp-server:
+    build: 
+      context: ./ftp-server
+    container_name: ftp-server
+    ports:
+      - "7777:21"
+      - "40000-40009:40000-40009"
+    networks:
+      ftp-network:
+        ipv4_address: 172.18.0.2
+        mac_address: 02:42:ac:11:00:02
+
+  ftp-client:
+    build:
+      context: ./ftp-client
+    container_name: ftp-client
+    depends_on:
+      - ftp-server
+    networks:
+      ftp-network:
+        ipv4_address: 172.18.0.3
+        mac_address: 02:42:ac:11:00:03
+
+  inquisitor:
+    build:
+      context: ./inquisitor
+    container_name: inquisitor
+    networks:
+      ftp-network:
+        ipv4_address: 172.18.0.4
+        mac_address: 02:42:ac:11:00:04
+
+networks:
+  ftp-network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.18.0.0/16
