@@ -5,8 +5,6 @@ from colorama import Fore
 import argparse
 from sys import exit
 
-# gerer les perms 
-# essayer de creer un file comme le nom qui va etre encrypter ex touch testr.txt.ft et voir la reaction du programme
 
 file_extensions = [
     '.der', '.pfx', '.key', '.crt', '.csr', '.p12', '.pem', '.odt', '.ott', 
@@ -39,8 +37,11 @@ def generate_key(all_files):
     if (os.path.exists('key') and len(all_files) == 0):
         print("The file are already encrypted !")
         exit(0)
-
-    key = Fernet.generate_key()
+    if (os.path.exists('key')):
+        with open('key', 'rb') as key_file:
+            key = key_file.read()
+    else:
+        key = Fernet.generate_key()
     with open ('key', 'wb') as key_file:
         key_file.write(key)
     return key
