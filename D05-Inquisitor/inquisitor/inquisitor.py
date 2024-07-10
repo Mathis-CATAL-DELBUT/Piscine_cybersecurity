@@ -57,8 +57,6 @@ def main():
     try:
         sniff(filter="tcp port 21", prn=lambda pkt: capture_ftp_traffic(pkt, args.verbose), stop_filter=lambda x: stop_event.is_set())
     except KeyboardInterrupt:
-        pass
-    finally:
         stop_event.set()
         print("\nRestauration des adresses MAC...")
         # Restaurer les adresses MAC

