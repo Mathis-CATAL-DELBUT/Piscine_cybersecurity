@@ -20,19 +20,16 @@ def close_connection(exception):
 def index():
     return render_template('index.html')
 
-@app.route('/login', methods=['POST'])
+@app.route('/login', methods=['POST'])  # Assurez-vous que cette route accepte bien la méthode POST
 def login():
     username = request.form['username']
     password = request.form['password']
     db = get_db()
     cursor = db.cursor()
-    print(username)
-    # cursor.execute("SELECT name FROM users WHERE name = ? AND password = ?", (username, password))
-    # cursor.execute("SELECT name FROM users WHERE name = 'Alic' OR name = 'Alice'")
     cursor.execute("SELECT name FROM users WHERE name = '%s' AND password = '%s'" % (username, password))
     user = cursor.fetchone()
     if user:
-        return f'BIENVENUE {user[0]}'
+        return f'Welcome {user[0]}'
     else:
         return 'Invalid username or password'
 

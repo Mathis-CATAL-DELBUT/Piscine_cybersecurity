@@ -33,7 +33,9 @@ class Vaccine:
                         data[input] = "abc"
                     else:
                         data[input] = payload
-                print(data) #### value test ####
+                # print(data) #### value test ####
+                print(data)
+                print(self.url)
                 if self.method.upper() == 'GET':
                     response = requests.get(self.url, params=data)
                 elif self.method.upper() == 'POST':
@@ -51,7 +53,7 @@ class Vaccine:
         error_messages = ["you have an error in your SQL syntax;", 
                             "unclosed quotation mark after the character string",
                             "syntax error", "warning", "welcome",
-                            "failed", "flag"]
+                            "failed", "flag", "invalid", "error", "exception",]
         if before.text != response.text:
             print(response.text)
             for error_message in error_messages:
