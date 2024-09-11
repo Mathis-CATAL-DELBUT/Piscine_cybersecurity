@@ -1,0 +1,25 @@
+## SQL Injection Detection Tool
+
+# Description:
+This Python tool detects potential SQL injection vulnerabilities in web applications by interacting with a given URL and attempting various SQL injection payloads.
+It identifies database management systems (DBMS) like MySQL and SQLite and logs the results if vulnerabilities are found.
+The tool also offers an option to archive the results in a zip file.
+
+# Features:
+- SQL Injection Detection: Attempts various payloads to identify SQL vulnerabilities.
+- Database Identification: Recognizes the database type (MySQL or SQLite) through HTTP headers and error messages.
+- Logging Results: Logs the findings, including the differences in HTML content before and after injection.
+- Archiving: Compresses the log results into a zip file after execution.
+
+# Usage:
+python script.py <URL> [-X GET|POST] [-o archive.log]
+
+
+# Dependencies:
+- requests: For sending HTTP requests.
+- beautifulsoup4: For parsing HTML and scraping forms.
+- difflib: For comparing HTML responses.
+- zipfile and os: For file compression and management.
+
+# License
+This tool is intended for ethical hacking and penetration testing purposes only. Use it responsibly.
